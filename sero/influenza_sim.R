@@ -154,4 +154,4 @@ res<- runserosim(
 )
 
 
-save.image('~/simulation_10k.RData')
+save.image(here('/simulation_10k.RData'))
