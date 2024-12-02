@@ -50,7 +50,6 @@ load(here('simulation_daily_high.RData'))
 Total of 10,000 individuals, 1 year of daily data.
 
 
-
 ```{r }
 immune_histories_long <- res$immune_histories_long
 immune_histories_long <- immune_histories_long %>% filter(x==2)
@@ -88,30 +87,6 @@ true_seroconvert <-  res$immune_histories_long %>% filter(x==2) %>% filter(t>425
 true_seroconvert_daily <- true_seroconvert %>% group_by(t) %>%
   summarise(daily_prev = mean(value, na.rm = T))
 attack_rate_season <- sum(true_seroconvert_daily$daily_prev)
-
-# denom <- true_seroconvert %>% group_by(i) %>% summarise(mean_value = mean(value, na.rm = T))
-# denom <- denom %>% filter(!is.na(mean_value))
-# 
-# 
-# true_seroconverters <- true_seroconvert %>% filter(value==1)
-# denominator <- nrow(denom) 
-# attack_rate <- nrow(true_seroconverters)/denominator
-#
-# 
-# true_seroconvert <-  res$immune_histories_long %>% filter(x==2) %>% filter(t>425 & t < 670)
-# 
-# 
-# denom <- true_seroconvert %>% group_by(i) %>% summarise(mean_value = mean(value, na.rm = T))
-# denom <- denom %>% filter(!is.na(mean_value))
-# 
-# true_seroconverters <- true_seroconvert %>% filter(value==1)
-# denominator <- nrow(denom) 
-# attack_rate_season <- nrow(true_seroconverters)/denominator
-# 
-# The attack rate during the year was `r attack_rate`
-# 
-# 
-# Focusing in on the 8 months of 'peak season', the attack rate was `r attack_rate_season`
 
 ```
 
@@ -215,16 +190,9 @@ any_pos <- season %>% filter(test_result==1)
 
 test <- season %>% group_by(t) %>%
   summarise(daily_prev = mean(test_result, na.rm = T))
-#sum(test$daily_prev)/7
 
 any_pos <- any_pos %>% select(i, month, test_result)
 any_pos <- unique(any_pos)
-#(unique(any_pos$i))/denominator
-
-#test <- infecteds[!(infecteds$i %in% any_pos$i),]
-
-#Estimated attack rate across full season:   `r length(unique(any_pos$i))/denominator` 
-
 
 ```
 
@@ -278,10 +246,6 @@ epicurv <- epicurv %>%
 epicurv_weekly <- epicurv %>% group_by(week) %>%
   summarise(estimates = mean(estimated_prev),
             truths = mean(true_prev))
-#sum(epicurv_weekly$truths)
-#sum(epicurv_weekly$estimates)
-
-
 
 colors <- c("True weekly prevalence" = "springgreen4",
             "Estimated weekly prevalence" = "orangered3")
@@ -337,31 +301,24 @@ sample_loop <- function(number_reps, number_sampled, season_db) {
   return(estimates)
 }
 
-weeks <- unique(season$week)
 weeks <- 9:44
 
 
 ######what if 25 people were sampled weekly?##########
-
-
 estimates_25 <- sample_loop(number_reps = 500, number_sampled = 25, season_db = season)
 
 colors <- c("True weekly prevalence" = "springgreen4",
             "Estimated weekly prevalence" = "orangered3")
 
-
 estimates_25$week_factor <- as.factor(estimates_25$week)
 epicurv_weekly$week_factor <- as.factor(epicurv_weekly$week)
 ggplot() +
   geom_violin(data = estimates_25, aes(x = week_factor, y = prev_list, color = "Estimated weekly prevalence"), fill = "orangered2", alpha = 0.1, linewidth = .1) +
-  #geom_line(data = estimates_means, aes(x= as.numeric(week), y= prev_mean, color = "Estimated weekly prevalence"), linewidth = 1) +
   geom_line(data = epicurv_weekly, aes(x = as.numeric(week_factor), y = truths, color = "True weekly prevalence" ), linewidth = 1) +
   scale_color_manual(values = colors) +
   labs(y = "Prevalence",
        x = "Week",
        color = "")
-
-
 
 ```
 
@@ -370,18 +327,15 @@ ggplot() +
 
 ```{r , message=FALSE, warning=FALSE, fig.width=10}
 
-
 estimates_50 <- sample_loop(number_reps = 500, number_sampled = 50, season_db = season)
 
 colors <- c("True weekly prevalence" = "springgreen4",
             "Estimated weekly prevalence" = "orangered3")
 
-
 estimates_50$week_factor <- as.factor(estimates_50$week)
 epicurv_weekly$week_factor <- as.factor(epicurv_weekly$week)
 ggplot() +
   geom_violin(data = estimates_50, aes(x = week_factor, y = prev_list, color = "Estimated weekly prevalence"), fill = "orangered2", alpha = 0.1, linewidth = .1) +
-  #geom_line(data = estimates_means, aes(x= as.numeric(week), y= prev_mean, color = "Estimated weekly prevalence"), linewidth = 1) +
   geom_line(data = epicurv_weekly, aes(x = as.numeric(week_factor), y = truths, color = "True weekly prevalence" ), linewidth = 1) +
   scale_color_manual(values = colors) +
   labs(y = "Prevalence",
@@ -389,23 +343,13 @@ ggplot() +
        color = "")
 
 
-
 ```
-
-
-
-
-
-
-
 
 
 
 #### 100 / week
 
 ```{r , message=FALSE, warning=FALSE, fig.width=10}
-
-
 
 estimates_100 <- sample_loop(number_reps = 500, number_sampled = 100, season_db = season)
 
@@ -417,7 +361,6 @@ estimates_100$week_factor <- as.factor(estimates_100$week)
 epicurv_weekly$week_factor <- as.factor(epicurv_weekly$week)
 ggplot() +
   geom_violin(data = estimates_100, aes(x = week_factor, y = prev_list, color = "Estimated weekly prevalence"), fill = "orangered2", alpha = 0.1, linewidth = .1) +
-  #geom_line(data = estimates_means, aes(x= as.numeric(week), y= prev_mean, color = "Estimated weekly prevalence"), linewidth = 1) +
   geom_line(data = epicurv_weekly, aes(x = as.numeric(week_factor), y = truths, color = "True weekly prevalence" ), linewidth = 1) +
   scale_color_manual(values = colors) +
   labs(y = "Prevalence",
@@ -432,14 +375,9 @@ ggplot() +
 
 
 
-
-
-
-
 #### 200 / week
 
 ```{r , message=FALSE, warning=FALSE, fig.width=10}
-
 
 
 estimates_200 <- sample_loop(number_reps = 500, number_sampled = 200, season_db = season)
@@ -452,7 +390,6 @@ estimates_200$week_factor <- as.factor(estimates_200$week)
 epicurv_weekly$week_factor <- as.factor(epicurv_weekly$week)
 ggplot() +
   geom_violin(data = estimates_200, aes(x = week_factor, y = prev_list, color = "Estimated weekly prevalence"), fill = "orangered2", alpha = 0.1, linewidth = .1) +
-  #geom_line(data = estimates_means, aes(x= as.numeric(week), y= prev_mean, color = "Estimated weekly prevalence"), linewidth = 1) +
   geom_line(data = epicurv_weekly, aes(x = as.numeric(week_factor), y = truths, color = "True weekly prevalence" ), linewidth = 1) +
   scale_color_manual(values = colors) +
   labs(y = "Prevalence",
@@ -472,22 +409,16 @@ ggplot() +
 
 ```{r , message=FALSE, warning=FALSE, fig.width=10}
 
-
-
-
 estimates_500 <- sample_loop(number_reps = 500, number_sampled = 500, season_db = season)
 
 colors <- c("True weekly prevalence" = "springgreen4",
             "Estimated weekly prevalence" = "orangered3")
 
-
 estimates_500$week_factor <- as.factor(estimates_500$week)
 epicurv_weekly$week_factor <- as.factor(epicurv_weekly$week)
-estimates_means <- estimates_500 %>% group_by(week) %>% summarise(prev_mean = mean(prev_list))
 
 ggplot() +
   geom_violin(data = estimates_500, aes(x = week_factor, y = prev_list, color = "Estimated weekly prevalence"), fill = "orangered2", alpha = 0.1, linewidth = .1) +
-  #geom_line(data = estimates_means, aes(x= as.numeric(week), y= prev_mean, color = "Estimated weekly prevalence"), linewidth = 1) +
   geom_line(data = epicurv_weekly, aes(x = as.numeric(week_factor), y = truths, color = "True weekly prevalence" ), linewidth = 1) +
   scale_color_manual(values = colors) +
   labs(y = "Prevalence",
@@ -554,11 +485,6 @@ estimates_500$sample_size <- 500
 estimates <- bind_rows(estimates_25, estimates_50, estimates_100, estimates_200, estimates_500)
 
 
-# plot precision and bias over time and collapsed across time
-# both absolute and relative
-# overall estimate for FULL attack rate 
-# does this include virtual visits????
-
 ```
 
 ### Precision and bias
@@ -613,7 +539,7 @@ abs_bias <- estimates %>% group_by(sample_size, week) %>%
        x = "Week",
        color = "Weekly sample size")
  
-estimates$rel_bias <- estimates$prev_list/(estimates$truths +0.0000000000000)
+#estimates$rel_bias <- estimates$prev_list/(estimates$truths +0.0000000000000)
 rel_bias <- estimates %>% group_by(sample_size, week) %>%
    summarise(rel_bias = mean(abs(rel_bias)))
 ggplot(data = rel_bias) + 
@@ -671,8 +597,7 @@ ggplot() +
 ## Simulation overview
 ```{r message=FALSE, warning=FALSE}
 rm(list=ls())
-load('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/simulation code/influenza/simulation_daily_med.RData')
-
+load(here('simulation_daily_med.RData'))
 ```
 
 Total of 10,000 individuals, 1 year of daily data.
@@ -717,29 +642,7 @@ true_seroconvert_daily <- true_seroconvert %>% group_by(t) %>%
   summarise(daily_prev = mean(value, na.rm = T))
 attack_rate_season <- sum(true_seroconvert_daily$daily_prev)
 
-# denom <- true_seroconvert %>% group_by(i) %>% summarise(mean_value = mean(value, na.rm = T))
-# denom <- denom %>% filter(!is.na(mean_value))
-# 
-# 
-# true_seroconverters <- true_seroconvert %>% filter(value==1)
-# denominator <- nrow(denom) 
-# attack_rate <- nrow(true_seroconverters)/denominator
-#
-# 
-# true_seroconvert <-  res$immune_histories_long %>% filter(x==2) %>% filter(t>425 & t < 670)
-# 
-# 
-# denom <- true_seroconvert %>% group_by(i) %>% summarise(mean_value = mean(value, na.rm = T))
-# denom <- denom %>% filter(!is.na(mean_value))
-# 
-# true_seroconverters <- true_seroconvert %>% filter(value==1)
-# denominator <- nrow(denom) 
-# attack_rate_season <- nrow(true_seroconverters)/denominator
-# 
-# The attack rate during the year was `r attack_rate`
-# 
-# 
-# Focusing in on the 8 months of 'peak season', the attack rate was `r attack_rate_season`
+
 
 ```
 
@@ -1302,7 +1205,7 @@ ggplot() +
 ## Simulation overview
 ```{r message=FALSE, warning=FALSE}
 rm(list=ls())
-load('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/simulation code/influenza/simulation_daily_low.RData')
+load(here('simulation_daily_low.RData'))
 
 ```
 
