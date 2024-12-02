@@ -131,6 +131,10 @@ obs6$t <- sample_month_6
 
 observation_times <- bind_rows(obs1, obs2, obs3, obs4, obs5, obs6)
 
+
+library(parallel)
+n_cores <- detectCores()
+
 ## Run the core simulation
 res<- runserosim(
   simulation_settings=simulation_settings,
@@ -150,7 +154,7 @@ res<- runserosim(
   VERBOSE=NULL,
   attempt_precomputation = TRUE,
   parallel=TRUE,
-  n_cores=60
+  n_cores=n_cores-2
 )
 
 
