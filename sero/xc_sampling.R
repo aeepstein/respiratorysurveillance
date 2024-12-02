@@ -237,32 +237,24 @@ ggplot() +
        x = "Sample size",
        color = "") 
 
-
-df$diff_rel_100 <- df$estimated_seroconv_100 / df$truth
-df$diff_rel_500 <- df$estimated_seroconv_500 / df$truth
-df$diff_rel_1000 <- df$estimated_seroconv_1000 / df$truth
-
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.9 & df$diff_rel_100 <= 1.1, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.9 & df$diff_rel_500 <= 1.1, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.9 & df$diff_rel_1000 <= 1.1, 1, 0)
-power_10 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
+estimate_power_relative <- function(db, margin, attack_rate) {
+  db$truth <- attack_rate
+  db$diff_rel_100 <- db$estimated_seroconv_100 / db$truth
+  db$diff_rel_500 <- db$estimated_seroconv_500 / db$truth
+  db$diff_rel_1000 <- db$estimated_seroconv_1000 / db$truth
+  db$within_margin_100 <- ifelse(db$diff_rel_100 >= (1-margin) & db$diff_rel_100 <= (1+margin), 1, 0)
+  db$within_margin_500 <- ifelse(db$diff_rel_500 >= (1-margin) & db$diff_rel_500 <= (1+margin), 1, 0)
+  db$within_margin_1000 <- ifelse(db$diff_rel_1000 >= (1-margin) & db$diff_rel_1000 <= (1+margin), 1, 0)
+  power <- db %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
                                                       power_500 = mean(within_margin_500),
                                                       power_1000 = mean(within_margin_1000))
-
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.8 & df$diff_rel_100 <= 1.2, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.8 & df$diff_rel_500 <= 1.2, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.8 & df$diff_rel_1000 <= 1.2, 1, 0)
-power_20 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                       power_500 = mean(within_margin_500),
-                                                       power_1000 = mean(within_margin_1000))
+}
 
 
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.5 & df$diff_rel_100 <= 1.5, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.5 & df$diff_rel_500 <= 1.5, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.5 & df$diff_rel_1000 <= 1.5, 1, 0)
-power_50 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                       power_500 = mean(within_margin_500),
-                                                       power_1000 = mean(within_margin_1000))
+power_10 <- estimate_power_relative(db = df, margin = 0.1, attack_rate = true_attackrate_high)
+power_20 <- estimate_power_relative(db = df, margin = 0.2, attack_rate = true_attackrate_high)
+power_50 <- estimate_power_relative(db = df, margin = 0.5, attack_rate = true_attackrate_high)
+
 
 
 colors <- c("Estimate within +/- 10% of truth" = "darkgreen",
@@ -338,25 +330,8 @@ df <- sample_loop_crosssectionals(db_t1 = obs_t1, db_t2 = obs_t2, n_repeats = 10
 
 create_plot(db = df, true_attackrate = true_attackrate_med)
 
-df$truth <- true_attackrate_med
-df$diff_100 <- abs(df$estimated_seroconv_100 - df$truth)
-df$diff_500 <- abs(df$estimated_seroconv_500 - df$truth)
-df$diff_1000 <- abs(df$estimated_seroconv_1000 - df$truth)
-
-df$within_margin_100 <- df$diff_100 <= 0.05
-df$within_margin_500 <- df$diff_500 <= 0.05
-df$within_margin_1000 <- df$diff_1000 <= 0.05
-power_5 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                      power_500 = mean(within_margin_500),
-                                                      power_1000 = mean(within_margin_1000))
-
-
-df$within_margin_100 <- df$diff_100 <= 0.1
-df$within_margin_500 <- df$diff_500 <= 0.1
-df$within_margin_1000 <- df$diff_1000 <= 0.1
-power_1 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                      power_500 = mean(within_margin_500),
-                                                      power_1000 = mean(within_margin_1000))
+power_5 <- estimate_power_absolute(db = df, margin = 0.05, attack_rate = true_attackrate_med)
+power_1 <- estimate_power_absolute(db = df, margin = 0.1, attack_rate = true_attackrate_med)
 
 colors <- c("Estimate within +/- 5pp of truth" = "red",
             "Estimate within +/- 10pp of truth" = "blue")
@@ -382,31 +357,9 @@ ggplot() +
        color = "") 
 
 
-df$diff_rel_100 <- df$estimated_seroconv_100 / df$truth
-df$diff_rel_500 <- df$estimated_seroconv_500 / df$truth
-df$diff_rel_1000 <- df$estimated_seroconv_1000 / df$truth
-
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.9 & df$diff_rel_100 <= 1.1, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.9 & df$diff_rel_500 <= 1.1, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.9 & df$diff_rel_1000 <= 1.1, 1, 0)
-power_10 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                       power_500 = mean(within_margin_500),
-                                                       power_1000 = mean(within_margin_1000))
-
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.8 & df$diff_rel_100 <= 1.2, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.8 & df$diff_rel_500 <= 1.2, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.8 & df$diff_rel_1000 <= 1.2, 1, 0)
-power_20 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                       power_500 = mean(within_margin_500),
-                                                       power_1000 = mean(within_margin_1000))
-
-
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.5 & df$diff_rel_100 <= 1.5, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.5 & df$diff_rel_500 <= 1.5, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.5 & df$diff_rel_1000 <= 1.5, 1, 0)
-power_50 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                       power_500 = mean(within_margin_500),
-                                                       power_1000 = mean(within_margin_1000))
+power_10 <- estimate_power_relative(db = df, margin = 0.1, attack_rate = true_attackrate_med)
+power_20 <- estimate_power_relative(db = df, margin = 0.2, attack_rate = true_attackrate_med)
+power_50 <- estimate_power_relative(db = df, margin = 0.5, attack_rate = true_attackrate_med)
 
 
 colors <- c("Estimate within +/- 10% of truth" = "darkgreen",
@@ -436,7 +389,6 @@ ggplot() +
   labs(y = "Power",
        x = "Sample size",
        color = "") 
-
 
 
 
@@ -484,25 +436,8 @@ df <- sample_loop_crosssectionals(db_t1 = obs_t1, db_t2 = obs_t2, n_repeats = 10
 
 create_plot(db = df, true_attackrate = true_attackrate_low)
 
-df$truth <- true_attackrate_low
-df$diff_100 <- abs(df$estimated_seroconv_100 - df$truth)
-df$diff_500 <- abs(df$estimated_seroconv_500 - df$truth)
-df$diff_1000 <- abs(df$estimated_seroconv_1000 - df$truth)
-
-df$within_margin_100 <- df$diff_100 <= 0.05
-df$within_margin_500 <- df$diff_500 <= 0.05
-df$within_margin_1000 <- df$diff_1000 <= 0.05
-power_5 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                      power_500 = mean(within_margin_500),
-                                                      power_1000 = mean(within_margin_1000))
-
-
-df$within_margin_100 <- df$diff_100 <= 0.1
-df$within_margin_500 <- df$diff_500 <= 0.1
-df$within_margin_1000 <- df$diff_1000 <= 0.1
-power_1 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                      power_500 = mean(within_margin_500),
-                                                      power_1000 = mean(within_margin_1000))
+power_5 <- estimate_power_absolute(db = df, margin = 0.05, attack_rate = true_attackrate_low)
+power_1 <- estimate_power_absolute(db = df, margin = 0.1, attack_rate = true_attackrate_low)
 
 colors <- c("Estimate within +/- 5pp of truth" = "red",
             "Estimate within +/- 10pp of truth" = "blue")
@@ -528,31 +463,9 @@ ggplot() +
        color = "") 
 
 
-df$diff_rel_100 <- df$estimated_seroconv_100 / df$truth
-df$diff_rel_500 <- df$estimated_seroconv_500 / df$truth
-df$diff_rel_1000 <- df$estimated_seroconv_1000 / df$truth
-
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.9 & df$diff_rel_100 <= 1.1, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.9 & df$diff_rel_500 <= 1.1, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.9 & df$diff_rel_1000 <= 1.1, 1, 0)
-power_10 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                       power_500 = mean(within_margin_500),
-                                                       power_1000 = mean(within_margin_1000))
-
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.8 & df$diff_rel_100 <= 1.2, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.8 & df$diff_rel_500 <= 1.2, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.8 & df$diff_rel_1000 <= 1.2, 1, 0)
-power_20 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                       power_500 = mean(within_margin_500),
-                                                       power_1000 = mean(within_margin_1000))
-
-
-df$within_margin_100 <- ifelse(df$diff_rel_100 >= 0.5 & df$diff_rel_100 <= 1.5, 1, 0)
-df$within_margin_500 <- ifelse(df$diff_rel_500 >= 0.5 & df$diff_rel_500 <= 1.5, 1, 0)
-df$within_margin_1000 <- ifelse(df$diff_rel_1000 >= 0.5 & df$diff_rel_1000 <= 1.5, 1, 0)
-power_50 <- df %>% group_by(sample_size) %>% summarise(power_100 = mean(within_margin_100),
-                                                       power_500 = mean(within_margin_500),
-                                                       power_1000 = mean(within_margin_1000))
+power_10 <- estimate_power_relative(db = df, margin = 0.1, attack_rate = true_attackrate_low)
+power_20 <- estimate_power_relative(db = df, margin = 0.2, attack_rate = true_attackrate_low)
+power_50 <- estimate_power_relative(db = df, margin = 0.5, attack_rate = true_attackrate_low)
 
 
 colors <- c("Estimate within +/- 10% of truth" = "darkgreen",
@@ -582,6 +495,4 @@ ggplot() +
   labs(y = "Power",
        x = "Sample size",
        color = "") 
-
-
 
