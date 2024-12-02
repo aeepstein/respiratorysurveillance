@@ -6,6 +6,8 @@ library(viridis)
 library(lubridate)
 library(parallel)
 
+###########high transmission##########
+
 times <-  seq(1,1*2*365,by=1) #2 years
 simulation_settings <- list("t_start"=1,"t_end"=max(times))
 
@@ -111,21 +113,6 @@ observation_model<-observation_model_discrete_noise
 breaks <- seq(0,8,by=1)
 cutoffs <- matrix(breaks,nrow=n_strains,ncol=length(breaks), byrow=TRUE)
 
-## Specify assay sensitivity and specificity needed for the observation model
-sensitivity<-0.95
-specificity<-1
-
-sample_month_1 <- 1
-sample_month_2 <- 50
-
-## Specify observation_times (serological survey sampling design) to observe all biomarkers across all individuals at the end of the simulation
-obs1 <- expand_grid(tibble(i=1:N, t = floor(rnorm(N, sample_month_1, 3))), b=1:n_strains)
-obs2 <- expand_grid(tibble(i=1:N, t = floor(rnorm(N, sample_month_2, 3))), b=1:n_strains)
-
-obs1$t <- sample_month_1
-obs2$t <- sample_month_2
-
-observation_times <- bind_rows(obs1, obs2)
 
 n_cores <- detectCores()
 
@@ -155,50 +142,7 @@ save.image(here('simulation_daily_high.RData'))
 
 
 
-
-
-
-
-
-
-
-
-
-
-###########lower transmission##########
-
-times <-  seq(1,1*2*365,by=1) #2 years
-simulation_settings <- list("t_start"=1,"t_end"=max(times))
-
-## Generate the population demography tibble
-N <- 10000
-demography <- generate_pop_demography(N, times, age_min=0, prob_removal=0.2)
-
-n_strains <- 2
-
-## Create a matrix giving cross-reactivity between each strain pairing
-x_coord <- numeric(n_strains)
-y_coord <- numeric(n_strains)
-
-## Simulate antigenic drift as a random walk in two dimensions
-x_coord[1] <- 0
-y_coord[1] <- 0
-## Each strain is antigenically drifted from the previous one with log-normally distributed 
-## moves through 2-dimensional antigenic space
-for(i in 2:n_strains){
-  x_coord[i] <- x_coord[i-1] + rlnorm(1, mean=log(1), sd=0.5)
-  y_coord[i] <- y_coord[i-1] + rlnorm(1, mean=log(1), sd=0.5)
-}
-
-## Cross-reactivity is a function of antigenic distance of the form e^-b*x, where x is the 
-## euclidean distance between strains and b is a parameter
-antigenic_map <- data.frame(x_coord=x_coord, y_coord=y_coord)
-antigenic_map <- as.matrix(dist(antigenic_map, diag=TRUE, upper=TRUE))
-antigenic_map <- exp(-0.25*antigenic_map)
-antigenic_map <- antigenic_map %>% as_tibble() %>% 
-  mutate(exposure_id=1:n()) %>% 
-  pivot_longer(-exposure_id) %>% rename(biomarker_id=name) %>% 
-  mutate(biomarker_id = as.numeric(biomarker_id))
+###########low transmission##########
 
 
 beta <- 0.000055
@@ -272,20 +216,6 @@ observation_model<-observation_model_discrete_noise
 breaks <- seq(0,8,by=1)
 cutoffs <- matrix(breaks,nrow=n_strains,ncol=length(breaks), byrow=TRUE)
 
-## Specify assay sensitivity and specificity needed for the observation model
-sensitivity<-0.95
-specificity<-1
-
-sample_month_1 <- 1
-sample_month_2 <- 50
-
-## Specify observation_times (serological survey sampling design) to observe all biomarkers across all individuals at the end of the simulation
-obs1 <- expand_grid(tibble(i=1:N, t = floor(rnorm(N, sample_month_1, 3))), b=1:n_strains)
-obs2 <- expand_grid(tibble(i=1:N, t = floor(rnorm(N, sample_month_2, 3))), b=1:n_strains)
-
-obs1$t <- sample_month_1
-obs2$t <- sample_month_2
-
 observation_times <- bind_rows(obs1, obs2)
 
 n_cores <- detectCores()
@@ -318,41 +248,7 @@ save.image(here('simulation_daily_med.RData'))
 
 
 
-###########low transmission##########
-
-times <-  seq(1,1*2*365,by=1) #2 years
-simulation_settings <- list("t_start"=1,"t_end"=max(times))
-
-## Generate the population demography tibble
-N <- 10000
-demography <- generate_pop_demography(N, times, age_min=0, prob_removal=0.2)
-
-n_strains <- 2
-
-## Create a matrix giving cross-reactivity between each strain pairing
-x_coord <- numeric(n_strains)
-y_coord <- numeric(n_strains)
-
-## Simulate antigenic drift as a random walk in two dimensions
-x_coord[1] <- 0
-y_coord[1] <- 0
-## Each strain is antigenically drifted from the previous one with log-normally distributed 
-## moves through 2-dimensional antigenic space
-for(i in 2:n_strains){
-  x_coord[i] <- x_coord[i-1] + rlnorm(1, mean=log(1), sd=0.5)
-  y_coord[i] <- y_coord[i-1] + rlnorm(1, mean=log(1), sd=0.5)
-}
-
-## Cross-reactivity is a function of antigenic distance of the form e^-b*x, where x is the 
-## euclidean distance between strains and b is a parameter
-antigenic_map <- data.frame(x_coord=x_coord, y_coord=y_coord)
-antigenic_map <- as.matrix(dist(antigenic_map, diag=TRUE, upper=TRUE))
-antigenic_map <- exp(-0.25*antigenic_map)
-antigenic_map <- antigenic_map %>% as_tibble() %>% 
-  mutate(exposure_id=1:n()) %>% 
-  pivot_longer(-exposure_id) %>% rename(biomarker_id=name) %>% 
-  mutate(biomarker_id = as.numeric(biomarker_id))
-
+###########med transmission##########
 
 beta <- 0.000025
 sigma <- 1
@@ -424,22 +320,6 @@ observation_model<-observation_model_discrete_noise
 ## This is a matrix with each row containing all of the cutoffs for that biomarker. Here, we have set the same cutoffs for all biomarkers 
 breaks <- seq(0,8,by=1)
 cutoffs <- matrix(breaks,nrow=n_strains,ncol=length(breaks), byrow=TRUE)
-
-## Specify assay sensitivity and specificity needed for the observation model
-sensitivity<-0.95
-specificity<-1
-
-sample_month_1 <- 1
-sample_month_2 <- 50
-
-## Specify observation_times (serological survey sampling design) to observe all biomarkers across all individuals at the end of the simulation
-obs1 <- expand_grid(tibble(i=1:N, t = floor(rnorm(N, sample_month_1, 3))), b=1:n_strains)
-obs2 <- expand_grid(tibble(i=1:N, t = floor(rnorm(N, sample_month_2, 3))), b=1:n_strains)
-
-obs1$t <- sample_month_1
-obs2$t <- sample_month_2
-
-observation_times <- bind_rows(obs1, obs2)
 
 n_cores <- detectCores()
 
