@@ -167,26 +167,11 @@ save.image(here('simulation_daily_high.RData'))
 
 ###########lower transmission##########
 
-
-rm(list=ls())
-
-
-library(serosim)
-library(tidyverse)
-library(patchwork)
-library(viridis)
-library(lubridate)
-
-## Specify the number of time periods to simulate 
-#times <- seq(1,4.5*10*12,by=1)
-times <-  seq(1,1*2*365,by=1)
+times <-  seq(1,1*2*365,by=1) #2 years
 simulation_settings <- list("t_start"=1,"t_end"=max(times))
 
 ## Generate the population demography tibble
 N <- 10000
-## See help file(?generate_pop_demography) for more information on function arguments.
-## age_min is set to 0 which allows births to occur until the last time step
-## Let's assume that no individuals are removed from the population and set prob_removal to 0
 demography <- generate_pop_demography(N, times, age_min=0, prob_removal=0.2)
 
 n_strains <- 2
@@ -209,22 +194,17 @@ for(i in 2:n_strains){
 ## euclidean distance between strains and b is a parameter
 antigenic_map <- data.frame(x_coord=x_coord, y_coord=y_coord)
 antigenic_map <- as.matrix(dist(antigenic_map, diag=TRUE, upper=TRUE))
-##############
 antigenic_map <- exp(-0.25*antigenic_map)
-##############
-
 antigenic_map <- antigenic_map %>% as_tibble() %>% 
   mutate(exposure_id=1:n()) %>% 
   pivot_longer(-exposure_id) %>% rename(biomarker_id=name) %>% 
   mutate(biomarker_id = as.numeric(biomarker_id))
 
 
-## Seasonal forcing with a peak force of infection of 0.2 and minimum of 0
-## If we assume an infectious period of 5 days, the simulation gives an annually oscillating R0 between 0 and 2 
-beta <- 0.0001
+beta <- 0.000055
 sigma <- 1
 phi <- 730 / 4
-seasonality <- beta*(1 + sigma*cos(2*pi*(times-1-phi)/365)) ^3
+seasonality <- beta*(1 + sigma*cos(2*pi*(times-1-phi)/365)) ^6
 plot(1:730, seasonality, type = "l")
 
 ## Create an empty array to store the force of exposure for all exposure types
@@ -233,7 +213,7 @@ t_start <- 1
 
 ## Set the circulation duration for each strain
 for(strain in seq_len(n_strains)){
-  t_end <- t_start + 365 - 1
+  t_end <- t_start + 365 - 1 #each circulates for a year
   foe_pars[,t_start:t_end,strain] <- seasonality[t_start:t_end]
   t_start <- t_end + 1
 }
@@ -294,7 +274,7 @@ cutoffs <- matrix(breaks,nrow=n_strains,ncol=length(breaks), byrow=TRUE)
 
 ## Specify assay sensitivity and specificity needed for the observation model
 sensitivity<-0.95
-specificity<-0.99
+specificity<-1
 
 sample_month_1 <- 1
 sample_month_2 <- 50
@@ -307,6 +287,8 @@ obs1$t <- sample_month_1
 obs2$t <- sample_month_2
 
 observation_times <- bind_rows(obs1, obs2)
+
+n_cores <- detectCores()
 
 ## Run the core simulation
 res<- runserosim(
@@ -321,64 +303,28 @@ res<- runserosim(
   antibody_model=antibody_model_monophasic_cross_reactivity,
   observation_model=observation_model_discrete_noise,
   draw_parameters=draw_parameters_random_fx,
-  
-  ## Other arguments needed
   cutoffs=cutoffs,
   sensitivity=sensitivity,
   specificity=specificity,
   VERBOSE=NULL,
   attempt_precomputation = TRUE,
   parallel=TRUE,
-  n_cores=60
+  n_cores=n_cores-4
 )
 
-
-immune_histories_long <- res$immune_histories_long
-immune_histories_long <- immune_histories_long %>% filter(x==2)
-#
-immune_histories_long$value2 <- ifelse(!is.na(immune_histories_long$value),
-                                       ifelse(immune_histories_long$value==1,"Successful exposure","No Exposure"), "NA")
-#
-
-true_seroconvert <-  res$immune_histories_long %>% filter(x==2) %>% filter(t>365)
-true_seroconvert_daily <- true_seroconvert %>% group_by(t) %>%
-  summarise(daily_prev = mean(value, na.rm = T))
-sum(true_seroconvert_daily$daily_prev)
-
-save.image('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/simulation code/influenza/simulation_daily_low.RData')
+save.image(here('simulation_daily_med.RData'))
 
 
 
 
 
+###########low transmission##########
 
-
-
-
-
-
-###########medium transmission##########
-
-
-rm(list=ls())
-
-
-library(serosim)
-library(tidyverse)
-library(patchwork)
-library(viridis)
-library(lubridate)
-
-## Specify the number of time periods to simulate 
-#times <- seq(1,4.5*10*12,by=1)
-times <-  seq(1,1*2*365,by=1)
+times <-  seq(1,1*2*365,by=1) #2 years
 simulation_settings <- list("t_start"=1,"t_end"=max(times))
 
 ## Generate the population demography tibble
 N <- 10000
-## See help file(?generate_pop_demography) for more information on function arguments.
-## age_min is set to 0 which allows births to occur until the last time step
-## Let's assume that no individuals are removed from the population and set prob_removal to 0
 demography <- generate_pop_demography(N, times, age_min=0, prob_removal=0.2)
 
 n_strains <- 2
@@ -401,22 +347,17 @@ for(i in 2:n_strains){
 ## euclidean distance between strains and b is a parameter
 antigenic_map <- data.frame(x_coord=x_coord, y_coord=y_coord)
 antigenic_map <- as.matrix(dist(antigenic_map, diag=TRUE, upper=TRUE))
-##############
 antigenic_map <- exp(-0.25*antigenic_map)
-##############
-
 antigenic_map <- antigenic_map %>% as_tibble() %>% 
   mutate(exposure_id=1:n()) %>% 
   pivot_longer(-exposure_id) %>% rename(biomarker_id=name) %>% 
   mutate(biomarker_id = as.numeric(biomarker_id))
 
 
-## Seasonal forcing with a peak force of infection of 0.2 and minimum of 0
-## If we assume an infectious period of 5 days, the simulation gives an annually oscillating R0 between 0 and 2 
-beta <- 0.00017
+beta <- 0.000025
 sigma <- 1
 phi <- 730 / 4
-seasonality <- beta*(1 + sigma*cos(2*pi*(times-1-phi)/365)) ^4
+seasonality <- beta*(1 + sigma*cos(2*pi*(times-1-phi)/365)) ^6
 plot(1:730, seasonality, type = "l")
 
 ## Create an empty array to store the force of exposure for all exposure types
@@ -425,7 +366,7 @@ t_start <- 1
 
 ## Set the circulation duration for each strain
 for(strain in seq_len(n_strains)){
-  t_end <- t_start + 365 - 1
+  t_end <- t_start + 365 - 1 #each circulates for a year
   foe_pars[,t_start:t_end,strain] <- seasonality[t_start:t_end]
   t_start <- t_end + 1
 }
@@ -486,7 +427,7 @@ cutoffs <- matrix(breaks,nrow=n_strains,ncol=length(breaks), byrow=TRUE)
 
 ## Specify assay sensitivity and specificity needed for the observation model
 sensitivity<-0.95
-specificity<-0.99
+specificity<-1
 
 sample_month_1 <- 1
 sample_month_2 <- 50
@@ -499,6 +440,8 @@ obs1$t <- sample_month_1
 obs2$t <- sample_month_2
 
 observation_times <- bind_rows(obs1, obs2)
+
+n_cores <- detectCores()
 
 ## Run the core simulation
 res<- runserosim(
@@ -513,31 +456,14 @@ res<- runserosim(
   antibody_model=antibody_model_monophasic_cross_reactivity,
   observation_model=observation_model_discrete_noise,
   draw_parameters=draw_parameters_random_fx,
-  
-  ## Other arguments needed
   cutoffs=cutoffs,
   sensitivity=sensitivity,
   specificity=specificity,
   VERBOSE=NULL,
   attempt_precomputation = TRUE,
   parallel=TRUE,
-  n_cores=60
+  n_cores=n_cores-4
 )
 
-immune_histories_long <- res$immune_histories_long
-immune_histories_long <- immune_histories_long %>% filter(x==2)
-#
-immune_histories_long$value2 <- ifelse(!is.na(immune_histories_long$value),
-                                       ifelse(immune_histories_long$value==1,"Successful exposure","No Exposure"), "NA")
-
-
-true_seroconvert <-  res$immune_histories_long %>% filter(x==2) %>% filter(t>365)
-true_seroconvert_daily <- true_seroconvert %>% group_by(t) %>%
-  summarise(daily_prev = mean(value, na.rm = T))
-sum(true_seroconvert_daily$daily_prev)
-
-save.image('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/simulation code/influenza/simulation_daily_med.RData')
-
-
-
+save.image(here('simulation_daily_low.RData'))
 
