@@ -1,0 +1,1025 @@
+---
+title: "Comparison of KPSC people getting blood draws and American Community Survey"
+date: "10/24/2024"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(haven)
+library(kableExtra)
+library(ggplot2)
+library(readxl)
+library(stringr)
+library(dplyr)
+library(sf)
+library(ggpubr)
+
+knitr::opts_chunk$set(echo = F)
+```
+
+
+```{r echo=FALSE}
+#direct <- read_sas('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/direct_output_external.sas7bdat')
+sero <- read_sas('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/sero_output_external_20240913.sas7bdat')
+
+#direct_agg <- read_sas('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/viral_surveillance_agg.sas7bdat')
+sero_agg <- read_sas('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/viral_surveillance_sero_agg_1108.sas7bdat')
+
+sero_zip_total <- sero_agg %>% group_by(ZIP) %>% summarise(n=sum(n_enc))
+sero_zip_total <- sero_zip_total %>% filter(n > 500)
+
+sero_agg <- sero_agg[sero_agg$ZIP %in% sero_zip_total$ZIP,]
+
+```
+
+```{r include=FALSE}
+agesex <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/acs_agesex/ACSST5Y2022.S0101-Data.csv')
+agesex_colnames <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/acs_agesex/ACSST5Y2022.S0101-Column-Metadata.csv')
+
+
+
+agesex <- agesex %>% dplyr::select(-ends_with("M"))
+agesex[] <- lapply(agesex, function(x) gsub("!!", "_", x))
+colnames(agesex) <- agesex[1, ]  # Set the first row as column names
+agesex <- agesex[-1, ]           # Remove the first row
+agesex <- agesex[,-231 ]           # Remove the first row
+
+agesex$zipcode <- substr(agesex$`Geographic Area Name`, 7, 11)
+#agesex$zip3 <- substr(agesex$zipcode, 1, 3)
+
+agesex$total_0to14 <- as.numeric(agesex$`Estimate_Total_Total population_AGE_Under 5 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_5 to 9 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_10 to 14 years`) 
+agesex$total_15to50 <-as.numeric(agesex$`Estimate_Total_Total population_AGE_15 to 19 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_20 to 24 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_25 to 29 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_30 to 34 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_35 to 39 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_40 to 44 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_45 to 49 years`) 
+agesex$total_50plus <-as.numeric(agesex$`Estimate_Total_Total population_AGE_50 to 54 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_55 to 59 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_60 to 64 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_65 to 69 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_70 to 74 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_75 to 79 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_80 to 84 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_85 years and over`) 
+
+
+agesex$female_0to14 <- as.numeric(agesex$`Estimate_Female_Total population_AGE_Under 5 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_5 to 9 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_10 to 14 years`) 
+agesex$female_15to50 <-as.numeric(agesex$`Estimate_Female_Total population_AGE_15 to 19 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_20 to 24 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_25 to 29 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_30 to 34 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_35 to 39 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_40 to 44 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_45 to 49 years`) 
+agesex$female_50plus <-as.numeric(agesex$`Estimate_Female_Total population_AGE_50 to 54 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_55 to 59 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_60 to 64 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_65 to 69 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_70 to 74 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_75 to 79 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_80 to 84 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_85 years and over`) 
+
+  
+
+agesex$male_0to14 <- as.numeric(agesex$`Estimate_Male_Total population_AGE_Under 5 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_5 to 9 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_10 to 14 years`) 
+agesex$male_15to50 <-as.numeric(agesex$`Estimate_Male_Total population_AGE_15 to 19 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_20 to 24 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_25 to 29 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_30 to 34 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_35 to 39 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_40 to 44 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_45 to 49 years`) 
+agesex$male_50plus <- as.numeric(agesex$`Estimate_Male_Total population_AGE_50 to 54 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_55 to 59 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_60 to 64 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_65 to 69 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_70 to 74 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_75 to 79 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_80 to 84 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_85 years and over`) 
+
+
+
+total <- agesex %>% dplyr::select(zipcode,
+                                  "Estimate_Total_Total population",
+                                  "Estimate_Male_Total population",
+                                  "Estimate_Female_Total population",
+                                  starts_with("total_"),
+                                  starts_with("male_"),
+                                  starts_with("female_"))
+
+
+total <- total %>% rename(total = "Estimate_Total_Total population",
+                          total_male=  "Estimate_Male_Total population",
+                          total_female=    "Estimate_Female_Total population")
+
+total$total <- as.numeric(total$total)
+total$total_male <- as.numeric(total$total_male)
+total$total_female <- as.numeric(total$total_female)
+
+agesex_zip <- total %>%
+  group_by(zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+agesex_zip <- agesex_zip[agesex_zip$zipcode %in% sero_zip_total$ZIP,]
+
+
+```
+
+
+
+
+## All zipcodes with > 500 blood draws (98% of draws) 
+
+
+#### Sex
+
+
+```{r}
+
+tot <- agesex_zip %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+prop_female <- tot$total_female/tot$total
+prop_male <- tot$total_male/tot$total
+
+n_female <- tot$total_female
+n_male <- tot$total_male
+
+sero_agg_sex <- sero_agg %>% group_by(sex) %>% summarise(n = sum(n_enc))
+
+sero_agg_sex$tot <- sum(sero_agg_sex$n)
+sero_agg_sex$prop <- sero_agg_sex$n / sero_agg_sex$tot 
+
+sex <- c("Male", "Female")
+la_n <- c(n_male, n_female)
+tot <- c(prop_male, prop_female)
+kpsc_n <- c(as.numeric(sero_agg_sex[2,2]), as.numeric(sero_agg_sex[1,2]))
+kpsc_total <- c(as.numeric(sero_agg_sex[2,4]), as.numeric(sero_agg_sex[1,4]))
+
+sex_total <- data.frame(sex, la_n, tot, kpsc_n, kpsc_total)
+
+colnames(sex_total) <- c("sex", "n", "prop", "n", "prop")
+kable(sex_total) %>% kable_classic() %>%   add_header_above(c(" ", "Census population" = 2, "KPSC  Population" = 2))
+
+```
+
+
+
+#### Age
+
+```{r}
+
+tot <- agesex_zip %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- tot$total_0to14/tot$total
+prop_15to50 <- tot$total_15to50/tot$total
+prop_50plus <- tot$total_50plus/tot$total
+
+n_0to14 <- tot$total_0to14
+n_15to50 <- tot$total_15to50
+n_50plus <- tot$total_50plus
+
+sero_agg_la_age <- sero_agg %>% group_by(age_group ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+
+age <- c("0 to < 15", "15 to < 50", "50 +")
+tot <- c(prop_0to14, prop_15to50, prop_50plus)
+la_n <- c(n_0to14, n_15to50, n_50plus)
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,4]), as.numeric(sero_agg_la_age[2,4]), as.numeric(sero_agg_la_age[3,4]))
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,2]), as.numeric(sero_agg_la_age[2,2]), as.numeric(sero_agg_la_age[3,2]))
+
+age_total <- data.frame(age, la_n, tot, kpsc_n, kpsc_total)
+
+colnames(age_total) <- c("sex", "n", "prop", "n", "prop")
+kable(age_total) %>% kable_classic() %>%   add_header_above(c(" ", "Census Population" = 2, "KPSC  Population" = 2))
+
+```
+
+#### Age/sex
+
+```{r message=FALSE, warning=FALSE}
+
+
+tot <- agesex_zip %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- tot$male_0to14/tot$total_male
+prop_15to50 <- tot$male_15to50/tot$total_male
+prop_50plus <- tot$male_50plus/tot$total_male
+n_0to14 <- tot$male_0to14
+n_15to50 <- tot$male_15to50
+n_50plus <- tot$male_50plus
+
+sero_agg_la_age <- sero_agg %>% group_by(age_group, sex ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age <- sero_agg_la_age %>% filter(sex == "M")
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+
+age <- c("0 to < 15", "15 to < 50", "50 +")
+la_n <- c(n_0to14, n_15to50, n_50plus)
+tot <- c(prop_0to14, prop_15to50, prop_50plus)
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,3]), as.numeric(sero_agg_la_age[2,3]), as.numeric(sero_agg_la_age[3,3]))
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,5]), as.numeric(sero_agg_la_age[2,5]), as.numeric(sero_agg_la_age[3,5]))
+age_total <- data.frame(age, la_n, tot, kpsc_n, kpsc_total)
+
+tot <- agesex_zip %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- tot$female_0to14/tot$total_female
+prop_15to50 <- tot$female_15to50/tot$total_female
+prop_50plus <- tot$female_50plus/tot$total_female
+n_0to14 <- tot$female_0to14
+n_15to50 <- tot$female_15to50
+n_50plus <- tot$female_50plus
+
+sero_agg_la_age <- sero_agg %>% group_by(age_group, sex ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age <- sero_agg_la_age %>% filter(sex == "F")
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,3]), as.numeric(sero_agg_la_age[2,3]), as.numeric(sero_agg_la_age[3,3]))
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,5]), as.numeric(sero_agg_la_age[2,5]), as.numeric(sero_agg_la_age[3,5]))
+
+age_total <- bind_cols(age_total,
+                       c(n_0to14, n_15to50, n_50plus),
+                       c(prop_0to14, prop_15to50, prop_50plus),
+                       kpsc_n,
+                       kpsc_total )
+colnames(age_total) <- c("age", "n", "prop", "n", "prop", "n", "prop", "n", "prop")
+
+kable(age_total) %>% kable_classic() %>%   
+    add_header_above(header = c(" " = 1, "Census Population" = 2, "KPSC  Population" = 2, "Census Population" = 2, "KPSC  Population" = 2))  %>%
+    add_header_above(c(" ", "Male" = 4, "Female" = 4))
+
+```
+
+
+#### Race/ethnicity
+
+```{r include=FALSE}
+race <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/acs_race/DECENNIALSF12010.P9-Data.csv')
+
+race[] <- lapply(race, function(x) gsub("!!", "_", x))
+colnames(race) <- race[1, ]  # Set the first row as column names
+race <- race[-1, ]           # Remove the first row
+race <- race[,-76 ]           
+
+race$zipcode <- substr(race$`Geographic Area Name`, 7, 11)
+race <- race[race$zipcode %in% sero_zip_total$ZIP,]
+
+race$total <- as.numeric(race$Total)
+race$hispanic <- as.numeric(race$`Total_Hispanic or Latino`)
+race$asian_pacificislander <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Native Hawaiian and Other Pacific Islander alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_American Indian and Alaska Native alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Asian alone`) 
+race$black <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Black or African American alone`)
+race$white <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_White alone`)
+race$other <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Some Other Race alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Two or More Races`) 
+
+race <- race %>% dplyr::select(zipcode, total, hispanic, asian_pacificislander, black, white, other)
+
+race_zip <- race %>%
+  group_by(zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+#race_zip3 <- race_zip3[race_zip3$zip3 %in% sero_zip_total$zipcode,]
+
+
+```
+
+
+```{r}
+tot <- race_zip %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+prop_hispanic <- tot$hispanic/tot$total
+prop_asian_pacificislander <- tot$asian_pacificislander/tot$total
+prop_black <- tot$black/tot$total
+prop_white <- tot$white/tot$total
+prop_other <- tot$other/tot$total
+
+sero_agg_la_race <- sero_agg %>% group_by(race ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_race$tot <- sum(sero_agg_la_race$n)
+sero_agg_la_race$prop <- sero_agg_la_race$n / sero_agg_la_race$tot 
+
+race <- c("Hispanic", "Asian/Pacific Islander", "Black", "White", "Other")
+la_n <- c(tot$hispanic, tot$asian_pacificislander, tot$black, tot$white, tot$other)
+tot <- c(prop_hispanic, prop_asian_pacificislander, prop_black, prop_white, prop_other)
+kpsc_total <- c(as.numeric(sero_agg_la_race[3,4]), as.numeric(sero_agg_la_race[1,4]), as.numeric(sero_agg_la_race[2,4]),
+                 as.numeric(sero_agg_la_race[5,4]), as.numeric(sero_agg_la_race[4,4]))
+kpsc_n <- c(as.numeric(sero_agg_la_race[3,2]), as.numeric(sero_agg_la_race[1,2]), as.numeric(sero_agg_la_race[2,2]),
+                 as.numeric(sero_agg_la_race[5,2]), as.numeric(sero_agg_la_race[4,2]))
+  
+race_total <- data.frame(race, la_n, tot,kpsc_n, kpsc_total)
+colnames(race_total) <- c("sex", "n", "prop", "n", "prop")
+kable(race_total) %>% kable_classic() %>%   add_header_above(c(" ", "Census Population" = 2, "KPSC  Population" = 2))
+```
+
+
+#### Zip code
+
+```{r echo=FALSE, fig.height=7, fig.width=15, message=FALSE, warning=FALSE}
+zip <- st_read('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/ZipCodes_-5351459964483019043/California_Zip_Codes.shp')
+zip <- st_transform(zip, crs = 4326)
+
+#zip <- zip %>% filter(ZIP_CODE< 94000)
+
+census_zip <- agesex_zip %>% dplyr::select(zipcode, total) %>% rename(la_total = total)
+census_zip$total_pop <- sum(census_zip$la_total)
+census_zip$la_proportion <- census_zip$la_total/census_zip$total_pop
+
+sero_agg_la_zip <- sero_agg %>% group_by(ZIP) %>% summarise(n_enc = sum(n_enc))
+sero_agg_la_zip$total_pop <- sum(sero_agg_la_zip$n_enc)
+sero_agg_la_zip$kpsc_proportion <- sero_agg_la_zip$n_enc/sero_agg_la_zip$total_pop
+
+zip <- merge(zip, census_zip, by.x = "ZIP_CODE", by.y = "zipcode", all.x = T)
+zip <- merge(zip, sero_agg_la_zip, by.x = "ZIP_CODE", by.y = "ZIP", all.x = T)
+
+p1 <- ggplot(zip) +
+  geom_sf(aes(fill = la_proportion)) +
+  theme_void() +
+  scale_fill_viridis_c(
+    limits = c(0,0.005),
+    breaks = c(0, 0.001, 0.002, 0.003, 0.004, 0.005),
+    name = "Proportion of pop", option = "B") +
+  ggtitle("Census Pop")
+
+
+p2 <- ggplot(zip) +
+  geom_sf(aes(fill = kpsc_proportion)) +
+  theme_void() +
+  scale_fill_viridis_c(
+    limits = c(0,0.005),
+    breaks = c(0, 0.001, 0.002, 0.003, 0.004, 0.005),
+    name = "Proportion of pop", option = "B") +
+  ggtitle("KPSC pop")
+ggarrange(p1, p2)
+
+zip_table <- zip %>% dplyr::select(ZIP_CODE, la_total, la_proportion, n_enc, kpsc_proportion)
+zip_table <- st_drop_geometry(zip_table)
+zip_table <- zip_table %>% filter(!is.na(la_total))
+colnames(zip_table) <- c("zip", "n", "prop", "n", "prop")
+
+#kable(zip_table) %>% kable_classic() %>%   add_header_above(c(" ", "Los Angeles County" = 2, "KPSC  Population" = 2))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## LA County (47% of draws) 
+
+#### Sex
+
+```{r}
+lacounty <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/LA_County_ZIP_Codes.csv')
+#lacounty$zip3 <- substr(lacounty$ZIPCODE, 1, 3)
+
+agesex_zip_la <- agesex_zip[agesex_zip$zipcode %in% lacounty$ZIPCODE,]
+sero_agg_la <- sero_agg[sero_agg$ZIP %in% lacounty$ZIPCODE,]
+
+la_total <- agesex_zip_la
+la_total <- la_total %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+prop_female <- la_total$total_female/la_total$total
+prop_male <- la_total$total_male/la_total$total
+
+n_female <- la_total$total_female
+n_male <- la_total$total_male
+
+sero_agg_la_sex <- sero_agg_la %>% group_by(sex) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_sex$tot <- sum(sero_agg_la_sex$n)
+sero_agg_la_sex$prop <- sero_agg_la_sex$n / sero_agg_la_sex$tot 
+
+sex <- c("Male", "Female")
+la_n <- c(n_male, n_female)
+la_total <- c(prop_male, prop_female)
+kpsc_n <- c(as.numeric(sero_agg_la_sex[2,2]), as.numeric(sero_agg_la_sex[1,2]))
+kpsc_total <- c(as.numeric(sero_agg_la_sex[2,4]), as.numeric(sero_agg_la_sex[1,4]))
+
+sex_total <- data.frame(sex, la_n, la_total, kpsc_n, kpsc_total)
+
+colnames(sex_total) <- c("sex", "n", "prop", "n", "prop")
+kable(sex_total) %>% kable_classic() %>%   add_header_above(c(" ", "Los Angeles County" = 2, "KPSC  Population" = 2))
+
+```
+
+
+#### Age
+
+```{r}
+
+la_total <- agesex_zip_la
+la_total <- la_total %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- la_total$total_0to14/la_total$total
+prop_15to50 <- la_total$total_15to50/la_total$total
+prop_50plus <- la_total$total_50plus/la_total$total
+
+n_0to14 <- la_total$total_0to14
+n_15to50 <- la_total$total_15to50
+n_50plus <- la_total$total_50plus
+
+sero_agg_la_age <- sero_agg_la %>% group_by(age_group ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+
+age <- c("0 to < 15", "15 to < 50", "50 +")
+la_total <- c(prop_0to14, prop_15to50, prop_50plus)
+la_n <- c(n_0to14, n_15to50, n_50plus)
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,4]), as.numeric(sero_agg_la_age[2,4]), as.numeric(sero_agg_la_age[3,4]))
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,2]), as.numeric(sero_agg_la_age[2,2]), as.numeric(sero_agg_la_age[3,2]))
+
+age_total <- data.frame(age, la_n, la_total, kpsc_n, kpsc_total)
+
+colnames(age_total) <- c("sex", "n", "prop", "n", "prop")
+kable(age_total) %>% kable_classic() %>%   add_header_above(c(" ", "Los Angeles County" = 2, "KPSC  Population" = 2))
+
+```
+
+#### Age/sex
+
+```{r message=FALSE, warning=FALSE}
+
+la_total <- agesex_zip_la
+la_total <- la_total %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- la_total$male_0to14/la_total$total_male
+prop_15to50 <- la_total$male_15to50/la_total$total_male
+prop_50plus <- la_total$male_50plus/la_total$total_male
+n_0to14 <- la_total$male_0to14
+n_15to50 <- la_total$male_15to50
+n_50plus <- la_total$male_50plus
+
+sero_agg_la_age <- sero_agg_la %>% group_by(age_group, sex ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age <- sero_agg_la_age %>% filter(sex == "M")
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+
+age <- c("0 to < 15", "15 to < 50", "50 +")
+la_n <- c(n_0to14, n_15to50, n_50plus)
+la_total <- c(prop_0to14, prop_15to50, prop_50plus)
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,3]), as.numeric(sero_agg_la_age[2,3]), as.numeric(sero_agg_la_age[3,3]))
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,5]), as.numeric(sero_agg_la_age[2,5]), as.numeric(sero_agg_la_age[3,5]))
+age_total <- data.frame(age, la_n, la_total, kpsc_n, kpsc_total)
+
+la_total <- agesex_zip_la
+la_total <- la_total %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- la_total$female_0to14/la_total$total_female
+prop_15to50 <- la_total$female_15to50/la_total$total_female
+prop_50plus <- la_total$female_50plus/la_total$total_female
+n_0to14 <- la_total$female_0to14
+n_15to50 <- la_total$female_15to50
+n_50plus <- la_total$female_50plus
+
+sero_agg_la_age <- sero_agg_la %>% group_by(age_group, sex ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age <- sero_agg_la_age %>% filter(sex == "F")
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,3]), as.numeric(sero_agg_la_age[2,3]), as.numeric(sero_agg_la_age[3,3]))
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,5]), as.numeric(sero_agg_la_age[2,5]), as.numeric(sero_agg_la_age[3,5]))
+
+age_total <- bind_cols(age_total,
+                       c(n_0to14, n_15to50, n_50plus),
+                       c(prop_0to14, prop_15to50, prop_50plus),
+                       kpsc_n,
+                       kpsc_total )
+colnames(age_total) <- c("age", "n", "prop", "n", "prop", "n", "prop", "n", "prop")
+
+kable(age_total) %>% kable_classic() %>%   
+    add_header_above(header = c(" " = 1, "Los Angeles County" = 2, "KPSC  Population" = 2, "Los Angeles County" = 2, "KPSC  Population" = 2))  %>%
+    add_header_above(c(" ", "Male" = 4, "Female" = 4))
+
+```
+
+
+#### Race/ethnicity
+
+```{r include=FALSE}
+race <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/acs_race/DECENNIALSF12010.P9-Data.csv')
+
+race[] <- lapply(race, function(x) gsub("!!", "_", x))
+colnames(race) <- race[1, ]  # Set the first row as column names
+race <- race[-1, ]           # Remove the first row
+race <- race[,-76 ]           
+
+race$zipcode <- substr(race$`Geographic Area Name`, 7, 11)
+race <- race[race$zipcode %in% lacounty$ZIPCODE,]
+
+race$total <- as.numeric(race$Total)
+race$hispanic <- as.numeric(race$`Total_Hispanic or Latino`)
+race$asian_pacificislander <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Native Hawaiian and Other Pacific Islander alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_American Indian and Alaska Native alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Asian alone`) 
+race$black <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Black or African American alone`)
+race$white <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_White alone`)
+race$other <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Some Other Race alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Two or More Races`) 
+
+race <- race %>% dplyr::select(zipcode, total, hispanic, asian_pacificislander, black, white, other)
+
+race_zip <- race %>%
+  group_by(zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+#race_zip3 <- race_zip3[race_zip3$zip3 %in% sero_zip_total$zipcode,]
+
+
+```
+
+
+```{r}
+la_total <- race_zip
+la_total <- la_total %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+prop_hispanic <- la_total$hispanic/la_total$total
+prop_asian_pacificislander <- la_total$asian_pacificislander/la_total$total
+prop_black <- la_total$black/la_total$total
+prop_white <- la_total$white/la_total$total
+prop_other <- la_total$other/la_total$total
+
+sero_agg_la_race <- sero_agg_la %>% group_by(race ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_race$tot <- sum(sero_agg_la_race$n)
+sero_agg_la_race$prop <- sero_agg_la_race$n / sero_agg_la_race$tot 
+
+race <- c("Hispanic", "Asian/Pacific Islander", "Black", "White", "Other")
+la_n <- c(la_total$hispanic, la_total$asian_pacificislander, la_total$black, la_total$white, la_total$other)
+la_total <- c(prop_hispanic, prop_asian_pacificislander, prop_black, prop_white, prop_other)
+kpsc_total <- c(as.numeric(sero_agg_la_race[3,4]), as.numeric(sero_agg_la_race[1,4]), as.numeric(sero_agg_la_race[2,4]),
+                 as.numeric(sero_agg_la_race[5,4]), as.numeric(sero_agg_la_race[4,4]))
+kpsc_n <- c(as.numeric(sero_agg_la_race[3,2]), as.numeric(sero_agg_la_race[1,2]), as.numeric(sero_agg_la_race[2,2]),
+                 as.numeric(sero_agg_la_race[5,2]), as.numeric(sero_agg_la_race[4,2]))
+  
+race_total <- data.frame(race, la_n, la_total,kpsc_n, kpsc_total)
+colnames(race_total) <- c("sex", "n", "prop", "n", "prop")
+kable(race_total) %>% kable_classic() %>%   add_header_above(c(" ", "Los Angeles County" = 2, "KPSC  Population" = 2))
+```
+
+#### Zip code
+
+```{r echo=FALSE, fig.height=7, fig.width=15, message=FALSE, warning=FALSE}
+zip <- st_read('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/ZipCodes_-5351459964483019043/California_Zip_Codes.shp')
+zip <- st_transform(zip, crs = 4326)
+
+zip <- zip[zip$ZIP_CODE %in% lacounty$ZIPCODE,]
+
+census_zip3 <- agesex_zip_la %>% dplyr::select(zipcode, total) %>% rename(la_total = total)
+census_zip3$total_pop <- sum(census_zip3$la_total)
+census_zip3$la_proportion <- census_zip3$la_total/census_zip3$total_pop
+
+sero_agg_la_zip3 <- sero_agg_la %>% group_by(ZIP) %>% summarise(n_enc = sum(n_enc))
+sero_agg_la_zip3$total_pop <- sum(sero_agg_la_zip3$n_enc)
+sero_agg_la_zip3$kpsc_proportion <- sero_agg_la_zip3$n_enc/sero_agg_la_zip3$total_pop
+
+zip <- merge(zip, census_zip3, by.x = "ZIP_CODE", by.y = "zipcode", all.x = T)
+zip <- merge(zip, sero_agg_la_zip3, by.x = "ZIP_CODE", by.y = "ZIP", all.x = T)
+
+p1 <- ggplot(zip) +
+  geom_sf(aes(fill = la_proportion)) +
+  theme_void() +
+  scale_fill_viridis_c(
+    limits = c(0, 0.016),
+    breaks = c(0, 0.002, 0.004, 0.006, 0.008, 0.01, 0.016),
+    name = "Proportion of pop", option = "B") +
+  ggtitle("Census Pop")
+
+
+p2 <- ggplot(zip) +
+  geom_sf(aes(fill = kpsc_proportion)) +
+  theme_void() +
+  scale_fill_viridis_c(
+    limits = c(0, 0.016),
+    breaks = c(0, 0.002, 0.004, 0.006, 0.008, 0.01, 0.016),
+    name = "Proportion of pop", option = "B") +
+  ggtitle("KPSC pop")
+ggarrange(p1, p2)
+
+zip_table <- zip %>% dplyr::select(ZIP_CODE, la_total, la_proportion, n_enc, kpsc_proportion)
+zip_table <- st_drop_geometry(zip_table)
+zip_table <- zip_table %>% filter(!is.na(la_total))
+colnames(zip_table) <- c("zip", "n", "prop", "n", "prop")
+
+#kable(zip_table) %>% kable_classic() %>%   add_header_above(c(" ", "Los Angeles County" = 2, "KPSC  Population" = 2))
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r echo=FALSE}
+#direct <- read_sas('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/direct_output_external.sas7bdat')
+sero <- read_sas('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/sero_output_external_20240913.sas7bdat')
+
+#direct_agg <- read_sas('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/viral_surveillance_agg.sas7bdat')
+sero_agg <- read_sas('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/viral_surveillance_sero_agg_1108.sas7bdat')
+
+sero_zip_total <- sero_agg %>% group_by(ZIP) %>% summarise(n=sum(n_enc))
+sero_zip_total <- sero_zip_total %>% filter(n > 500)
+
+sero_agg <- sero_agg[sero_agg$ZIP %in% sero_zip_total$ZIP,]
+
+```
+
+```{r include=FALSE}
+agesex <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/acs_agesex/ACSST5Y2022.S0101-Data.csv')
+agesex_colnames <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/acs_agesex/ACSST5Y2022.S0101-Column-Metadata.csv')
+
+
+
+agesex <- agesex %>% dplyr::select(-ends_with("M"))
+agesex[] <- lapply(agesex, function(x) gsub("!!", "_", x))
+colnames(agesex) <- agesex[1, ]  # Set the first row as column names
+agesex <- agesex[-1, ]           # Remove the first row
+agesex <- agesex[,-231 ]           # Remove the first row
+
+agesex$zipcode <- substr(agesex$`Geographic Area Name`, 7, 11)
+#agesex$zip3 <- substr(agesex$zipcode, 1, 3)
+
+agesex$total_0to14 <- as.numeric(agesex$`Estimate_Total_Total population_AGE_Under 5 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_5 to 9 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_10 to 14 years`) 
+agesex$total_15to50 <-as.numeric(agesex$`Estimate_Total_Total population_AGE_15 to 19 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_20 to 24 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_25 to 29 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_30 to 34 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_35 to 39 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_40 to 44 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_45 to 49 years`) 
+agesex$total_50plus <-as.numeric(agesex$`Estimate_Total_Total population_AGE_50 to 54 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_55 to 59 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_60 to 64 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_65 to 69 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_70 to 74 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_75 to 79 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_80 to 84 years`) +
+                      as.numeric(agesex$`Estimate_Total_Total population_AGE_85 years and over`) 
+
+
+agesex$female_0to14 <- as.numeric(agesex$`Estimate_Female_Total population_AGE_Under 5 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_5 to 9 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_10 to 14 years`) 
+agesex$female_15to50 <-as.numeric(agesex$`Estimate_Female_Total population_AGE_15 to 19 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_20 to 24 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_25 to 29 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_30 to 34 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_35 to 39 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_40 to 44 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_45 to 49 years`) 
+agesex$female_50plus <-as.numeric(agesex$`Estimate_Female_Total population_AGE_50 to 54 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_55 to 59 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_60 to 64 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_65 to 69 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_70 to 74 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_75 to 79 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_80 to 84 years`) +
+                      as.numeric(agesex$`Estimate_Female_Total population_AGE_85 years and over`) 
+
+  
+
+agesex$male_0to14 <- as.numeric(agesex$`Estimate_Male_Total population_AGE_Under 5 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_5 to 9 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_10 to 14 years`) 
+agesex$male_15to50 <-as.numeric(agesex$`Estimate_Male_Total population_AGE_15 to 19 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_20 to 24 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_25 to 29 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_30 to 34 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_35 to 39 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_40 to 44 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_45 to 49 years`) 
+agesex$male_50plus <- as.numeric(agesex$`Estimate_Male_Total population_AGE_50 to 54 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_55 to 59 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_60 to 64 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_65 to 69 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_70 to 74 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_75 to 79 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_80 to 84 years`) +
+                      as.numeric(agesex$`Estimate_Male_Total population_AGE_85 years and over`) 
+
+
+
+total <- agesex %>% dplyr::select(zipcode,
+                                  "Estimate_Total_Total population",
+                                  "Estimate_Male_Total population",
+                                  "Estimate_Female_Total population",
+                                  starts_with("total_"),
+                                  starts_with("male_"),
+                                  starts_with("female_"))
+
+
+total <- total %>% rename(total = "Estimate_Total_Total population",
+                          total_male=  "Estimate_Male_Total population",
+                          total_female=    "Estimate_Female_Total population")
+
+total$total <- as.numeric(total$total)
+total$total_male <- as.numeric(total$total_male)
+total$total_female <- as.numeric(total$total_female)
+
+agesex_zip <- total %>%
+  group_by(zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+agesex_zip <- agesex_zip[agesex_zip$zipcode %in% sero_zip_total$ZIP,]
+
+
+```
+
+
+## San Diego County (13% of draws)
+
+#### Sex
+
+```{r}
+lacounty <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/ZIP_CODES_20241025.csv')
+lacounty$ZIP <- as.numeric(gsub(",","",lacounty$ZIP))
+lacounty <- lacounty %>% dplyr::select(ZIP)
+
+agesex_zip_la <- agesex_zip[agesex_zip$zipcode %in% lacounty$ZIP,]
+sero_agg_la <- sero_agg[sero_agg$ZIP %in% lacounty$ZIP,]
+
+la_total <- agesex_zip_la
+la_total <- la_total %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+prop_female <- la_total$total_female/la_total$total
+prop_male <- la_total$total_male/la_total$total
+
+n_female <- la_total$total_female
+n_male <- la_total$total_male
+
+sero_agg_la_sex <- sero_agg_la %>% group_by(sex) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_sex$tot <- sum(sero_agg_la_sex$n)
+sero_agg_la_sex$prop <- sero_agg_la_sex$n / sero_agg_la_sex$tot 
+
+sex <- c("Male", "Female")
+la_n <- c(n_male, n_female)
+la_total <- c(prop_male, prop_female)
+kpsc_n <- c(as.numeric(sero_agg_la_sex[2,2]), as.numeric(sero_agg_la_sex[1,2]))
+kpsc_total <- c(as.numeric(sero_agg_la_sex[2,4]), as.numeric(sero_agg_la_sex[1,4]))
+
+sex_total <- data.frame(sex, la_n, la_total, kpsc_n, kpsc_total)
+
+colnames(sex_total) <- c("sex", "n", "prop", "n", "prop")
+kable(sex_total) %>% kable_classic() %>%   add_header_above(c(" ", "San Diego County" = 2, "KPSC  Population" = 2))
+
+```
+
+
+#### Age
+
+```{r}
+
+la_total <- agesex_zip_la %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- la_total$total_0to14/la_total$total
+prop_15to50 <- la_total$total_15to50/la_total$total
+prop_50plus <- la_total$total_50plus/la_total$total
+
+n_0to14 <- la_total$total_0to14
+n_15to50 <- la_total$total_15to50
+n_50plus <- la_total$total_50plus
+
+sero_agg_la_age <- sero_agg_la %>% group_by(age_group ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+
+age <- c("0 to < 15", "15 to < 50", "50 +")
+la_total <- c(prop_0to14, prop_15to50, prop_50plus)
+la_n <- c(n_0to14, n_15to50, n_50plus)
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,4]), as.numeric(sero_agg_la_age[2,4]), as.numeric(sero_agg_la_age[3,4]))
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,2]), as.numeric(sero_agg_la_age[2,2]), as.numeric(sero_agg_la_age[3,2]))
+
+age_total <- data.frame(age, la_n, la_total, kpsc_n, kpsc_total)
+
+colnames(age_total) <- c("sex", "n", "prop", "n", "prop")
+kable(age_total) %>% kable_classic() %>%   add_header_above(c(" ", "San Diego County" = 2, "KPSC  Population" = 2))
+
+```
+
+#### Age/sex
+
+```{r message=FALSE, warning=FALSE}
+
+la_total <- agesex_zip_la %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- la_total$male_0to14/la_total$total_male
+prop_15to50 <- la_total$male_15to50/la_total$total_male
+prop_50plus <- la_total$male_50plus/la_total$total_male
+n_0to14 <- la_total$male_0to14
+n_15to50 <- la_total$male_15to50
+n_50plus <- la_total$male_50plus
+
+sero_agg_la_age <- sero_agg_la %>% group_by(age_group, sex ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age <- sero_agg_la_age %>% filter(sex == "M")
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+
+age <- c("0 to < 15", "15 to < 50", "50 +")
+la_n <- c(n_0to14, n_15to50, n_50plus)
+la_total <- c(prop_0to14, prop_15to50, prop_50plus)
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,3]), as.numeric(sero_agg_la_age[2,3]), as.numeric(sero_agg_la_age[3,3]))
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,5]), as.numeric(sero_agg_la_age[2,5]), as.numeric(sero_agg_la_age[3,5]))
+age_total <- data.frame(age, la_n, la_total, kpsc_n, kpsc_total)
+
+la_total <- agesex_zip_la %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+prop_0to14 <- la_total$female_0to14/la_total$total_female
+prop_15to50 <- la_total$female_15to50/la_total$total_female
+prop_50plus <- la_total$female_50plus/la_total$total_female
+n_0to14 <- la_total$female_0to14
+n_15to50 <- la_total$female_15to50
+n_50plus <- la_total$female_50plus
+
+sero_agg_la_age <- sero_agg_la %>% group_by(age_group, sex ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_age <- sero_agg_la_age %>% filter(sex == "F")
+sero_agg_la_age$tot <- sum(sero_agg_la_age$n)
+sero_agg_la_age$prop <- sero_agg_la_age$n / sero_agg_la_age$tot 
+kpsc_n <- c(as.numeric(sero_agg_la_age[1,3]), as.numeric(sero_agg_la_age[2,3]), as.numeric(sero_agg_la_age[3,3]))
+kpsc_total <- c(as.numeric(sero_agg_la_age[1,5]), as.numeric(sero_agg_la_age[2,5]), as.numeric(sero_agg_la_age[3,5]))
+
+age_total <- bind_cols(age_total,
+                       c(n_0to14, n_15to50, n_50plus),
+                       c(prop_0to14, prop_15to50, prop_50plus),
+                       kpsc_n,
+                       kpsc_total )
+colnames(age_total) <- c("age", "n", "prop", "n", "prop", "n", "prop", "n", "prop")
+
+kable(age_total) %>% kable_classic() %>%   
+    add_header_above(header = c(" " = 1, "San Diego County" = 2, "KPSC  Population" = 2, "San Diego County" = 2, "KPSC  Population" = 2))  %>%
+    add_header_above(c(" ", "Male" = 4, "Female" = 4))
+
+```
+
+
+#### Race/ethnicity
+
+```{r include=FALSE}
+race <- read.csv('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/data/acs_race/DECENNIALSF12010.P9-Data.csv')
+
+race[] <- lapply(race, function(x) gsub("!!", "_", x))
+colnames(race) <- race[1, ]  # Set the first row as column names
+race <- race[-1, ]           # Remove the first row
+race <- race[,-76 ]           
+
+race$zipcode <- substr(race$`Geographic Area Name`, 7, 11)
+race <- race[race$zipcode %in% lacounty$ZIP,]
+
+race$total <- as.numeric(race$Total)
+race$hispanic <- as.numeric(race$`Total_Hispanic or Latino`)
+race$asian_pacificislander <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Native Hawaiian and Other Pacific Islander alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_American Indian and Alaska Native alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Asian alone`) 
+race$black <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Black or African American alone`)
+race$white <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_White alone`)
+race$other <- as.numeric(race$`Total_Not Hispanic or Latino_Population of one race_Some Other Race alone`) +
+  as.numeric(race$`Total_Not Hispanic or Latino_Two or More Races`) 
+
+race <- race %>% dplyr::select(zipcode, total, hispanic, asian_pacificislander, black, white, other)
+
+race_zip <- race %>%
+  group_by(zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+#race_zip <- race_zip[race_zip$zipcode %in% sero_zip_total$zipcode,]
+
+
+```
+
+
+```{r}
+la_total <- race_zip %>% dplyr::select(-zipcode) %>%
+  summarise(across(everything(), sum, na.rm = TRUE))
+
+prop_hispanic <- la_total$hispanic/la_total$total
+prop_asian_pacificislander <- la_total$asian_pacificislander/la_total$total
+prop_black <- la_total$black/la_total$total
+prop_white <- la_total$white/la_total$total
+prop_other <- la_total$other/la_total$total
+
+sero_agg_la_race <- sero_agg_la %>% group_by(race ) %>% summarise(n = sum(n_enc))
+
+sero_agg_la_race$tot <- sum(sero_agg_la_race$n)
+sero_agg_la_race$prop <- sero_agg_la_race$n / sero_agg_la_race$tot 
+
+race <- c("Hispanic", "Asian/Pacific Islander", "Black", "White", "Other")
+la_n <- c(la_total$hispanic, la_total$asian_pacificislander, la_total$black, la_total$white, la_total$other)
+la_total <- c(prop_hispanic, prop_asian_pacificislander, prop_black, prop_white, prop_other)
+kpsc_total <- c(as.numeric(sero_agg_la_race[3,4]), as.numeric(sero_agg_la_race[1,4]), as.numeric(sero_agg_la_race[2,4]),
+                 as.numeric(sero_agg_la_race[5,4]), as.numeric(sero_agg_la_race[4,4]))
+kpsc_n <- c(as.numeric(sero_agg_la_race[3,2]), as.numeric(sero_agg_la_race[1,2]), as.numeric(sero_agg_la_race[2,2]),
+                 as.numeric(sero_agg_la_race[5,2]), as.numeric(sero_agg_la_race[4,2]))
+  
+race_total <- data.frame(race, la_n, la_total,kpsc_n, kpsc_total)
+colnames(race_total) <- c("sex", "n", "prop", "n", "prop")
+kable(race_total) %>% kable_classic() %>%   add_header_above(c(" ", "San Diego County" = 2, "KPSC  Population" = 2))
+```
+
+
+
+
+#### Zip code
+
+```{r echo=FALSE, fig.height=7, fig.width=15, message=FALSE, warning=FALSE}
+zip <- st_read('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/ZipCodes_-5351459964483019043/California_Zip_Codes.shp')
+zip <- st_transform(zip, crs = 4326)
+
+zip <- zip[zip$ZIP_CODE %in% lacounty$ZIP,]
+
+census_zip3 <- agesex_zip_la %>% dplyr::select(zipcode, total) %>% rename(la_total = total)
+census_zip3$total_pop <- sum(census_zip3$la_total)
+census_zip3$la_proportion <- census_zip3$la_total/census_zip3$total_pop
+
+sero_agg_la_zip3 <- sero_agg_la %>% group_by(ZIP) %>% summarise(n_enc = sum(n_enc))
+sero_agg_la_zip3$total_pop <- sum(sero_agg_la_zip3$n_enc)
+sero_agg_la_zip3$kpsc_proportion <- sero_agg_la_zip3$n_enc/sero_agg_la_zip3$total_pop
+
+zip <- merge(zip, census_zip3, by.x = "ZIP_CODE", by.y = "zipcode", all.x = T)
+zip <- merge(zip, sero_agg_la_zip3, by.x = "ZIP_CODE", by.y = "ZIP", all.x = T)
+
+p1 <- ggplot(zip) +
+  geom_sf(aes(fill = la_proportion)) +
+  theme_void() +
+  scale_fill_viridis_c(
+    limits = c(0, 0.036),
+    breaks = c(0, 0.004, 0.008, 0.012, 0.016, 0.020, 0.024, 0.028, 0.032, 0.036),
+    name = "Proportion of pop", option = "B") +
+  ggtitle("Census Pop")
+
+
+p2 <- ggplot(zip) +
+  geom_sf(aes(fill = kpsc_proportion)) +
+  theme_void() +
+  scale_fill_viridis_c(
+    limits = c(0, 0.036),
+    breaks = c(0, 0.004, 0.008, 0.012, 0.016, 0.020, 0.024, 0.028, 0.032, 0.036),
+    name = "Proportion of pop", option = "B") +
+  ggtitle("KPSC pop")
+ggarrange(p1, p2)
+
+zip_table <- zip %>% dplyr::select(ZIP_CODE, la_total, la_proportion, n_enc, kpsc_proportion)
+zip_table <- st_drop_geometry(zip_table)
+zip_table <- zip_table %>% filter(!is.na(la_total))
+colnames(zip_table) <- c("zip", "n", "prop", "n", "prop")
+
+#kable(zip_table) %>% kable_classic() %>%   add_header_above(c(" ", "San Diego County" = 2, "KPSC  Population" = 2))
+
+
+```
