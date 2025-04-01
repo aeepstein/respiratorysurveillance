@@ -56,27 +56,7 @@ likelihood <- dust_likelihood_monty(unfilter, sir_packer)
 
 posterior <- prior + likelihood
 
-# # sampler with step of 0.01 for beta and gamma, and 1 for I0 and R0
-# acceptances <- c()
-# step_sizes <- c(1,1e-1,1e-2,1e-3,1e-13,1e-14,1e-15,1e-16)
-# for (step_size in step_sizes) {
-#   vcv <- diag(c(step_size),1,1)
-#   sampler <- monty_sampler_random_walk(vcv)
-#   n_samples <- 1e4
-#   samples <- monty_sample(posterior, sampler, n_samples, initial = sir_packer$pack(pars))
-#   acceptance_rate <- 1 - sum(apply(samples$pars,1,duplicated))/n_samples
-#   print(paste("Step size: ", step_size, "Acceptance rate: ", acceptance_rate))
-#   acceptances <- c(acceptances, acceptance_rate)
-#   # print(apply(samples$pars,1,mean))
-# }
-# # log x axis
-# plot(step_sizes, acceptances, type="l", log="x", xlab="Step size", ylab="Acceptance rate")
-# vcv <- diag(c(1e-11),1,1)
 vcv <- diag(c(1e-8,7),2,2)
-# vcv <- matrix(c(0.0005, 0.0003, 0, 0.0005,
-#                 0.0003, 0.0003, 0.0003, 0,
-#                 0, 0.0003, 0.01, 0,
-#                 0.0005, 0, 0, 0.1), 4, 4)
 sampler <- monty_sampler_random_walk(vcv)
 
 n_samples = 1e6
@@ -91,9 +71,9 @@ for (par_n in 1:((n_samples%/%4))) {
   sys_pars <- list(beta = pars_samples[1,par_n], gamma = 1, I0 = 0, R0 = pars_samples[2,par_n], sigma = 1, phi = 18)
   sys <- dust_system_create(sir(), sys_pars, dt = 0.25,deterministic = TRUE)
   dust_system_set_state_initial(sys)
-  time <- 0:150/4
+  time <- c(0,36)
   y <- dust_system_simulate(sys, time)
-  attack_rates[par_n] <- dust_unpack_state(sys,y)$R[151]-dust_unpack_state(sys,y)$R[1]
+  attack_rates[par_n] <- dust_unpack_state(sys,y)$R[2]-dust_unpack_state(sys,y)$R[1]
 }
 print(quantile(attack_rates, c(0.025,0.5,0.975)))
 # # save results

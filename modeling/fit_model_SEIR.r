@@ -1,5 +1,13 @@
 ## BJS Jan 2025
 ## Fitting an SEIR model to prevalence time series data, with quantified uncertainty in the parameters
+## Inputs through the command line:
+## 1. simulation_file: name of the file with the data
+## 2. n_simulations: number of simulations
+## 3. MCMC_length: length of each MCMC chain
+## Outputs:
+## 1. parameter_med_ci_simulation_file.csv: median and 95% CI of the parameters
+## 2. attack_med_ci_simulation_file.csv: median and 95% CI of the attack rate
+
 library(odin2)
 library(dust2)
 library(monty)
@@ -85,9 +93,9 @@ run_model <- function(i, n_samples) {
     sys_pars <- list(beta = pars_samples[1,par_n], gamma = pars_samples[2,par_n], alpha=1, E0 = pars_samples[3,par_n], R0 = pars_samples[4,par_n], sigma=pars_samples[5,par_n], phi=pars_samples[6,par_n]) 
     sys <- dust_system_create(seir(), sys_pars, dt = 0.25,deterministic = TRUE)
     dust_system_set_state_initial(sys)
-    time <- 0:150/4
+    time <- c(0,sim_length)
     y <- dust_system_simulate(sys, time)
-    attack_rates[par_n] <- dust_unpack_state(sys,y)$R[151]-dust_unpack_state(sys,y)$R[1]
+    attack_rates[par_n] <- dust_unpack_state(sys,y)$R[2]-dust_unpack_state(sys,y)$R[1]
   }
   attack_med <- median(attack_rates)
   attack_ci <- quantile(attack_rates, c(0.025, 0.975))
