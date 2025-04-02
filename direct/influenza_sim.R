@@ -13,7 +13,7 @@ simulation_settings <- list("t_start"=1,"t_end"=max(times))
 
 ## Generate the population demography tibble
 N <- 10000
-demography <- generate_pop_demography(N, times, age_min=0, prob_removal=0.2)
+demography <- generate_pop_demography(N, times, age_min=0, prob_removal=0)
 
 n_strains <- 2
 
@@ -138,11 +138,11 @@ res<- runserosim(
   n_cores=n_cores-4
 )
 
-save.image(here('simulation_daily_high.RData'))
+save.image(here('simulation_daily_high_noLTFU.RData'))
 
 
 
-###########low transmission##########
+###########med transmission##########
 
 
 beta <- 0.000055
@@ -242,7 +242,7 @@ res<- runserosim(
   n_cores=n_cores-4
 )
 
-save.image(here('simulation_daily_med.RData'))
+save.image(here('simulation_daily_med_noLTFU.RData'))
 
 
 
@@ -345,5 +345,5 @@ res<- runserosim(
   n_cores=n_cores-4
 )
 
-save.image(here('simulation_daily_low.RData'))
+save.image(here('simulation_daily_low_noLTFU.RData'))
 

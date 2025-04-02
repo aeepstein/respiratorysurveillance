@@ -43,7 +43,7 @@ knitr::opts_chunk$set(echo = FALSE, fig.show = 'hold')
 
 ## Simulation overview
 ```{r message=FALSE, warning=FALSE}
-load(here('simulation_daily_high.RData'))
+load(here('simulation_daily_high_noLTFU.RData'))
 
 ```
 
@@ -111,22 +111,21 @@ infection_times <- immune_histories_long %>%
   ungroup() 
 
 
-infection_times$sens <- 0.95
+infection_times$sens <- 0.90
 infection_times$spec <- 1
 
-infection_times$sens <- ifelse(infection_times$infection_day >= 1 &
-                               infection_times$infection_day <= 3,
-                             0.95, infection_times$sens)
-infection_times$sens <- ifelse(infection_times$infection_day == 4,
-                             0.90, infection_times$sens)
-infection_times$sens <- ifelse(infection_times$infection_day == 5,
-                             0.9, infection_times$sens)
-infection_times$sens <- ifelse(infection_times$infection_day == 6,
-                             0.85, infection_times$sens)
-infection_times$sens <- ifelse(infection_times$infection_day == 7,
-                             0.8, infection_times$sens)
-infection_times$sens <- ifelse(infection_times$infection_day == 8,
-                             0.75, infection_times$sens)
+# infection_times$sens <- ifelse(infection_times$infection_day >= 1 &
+#                                infection_times$infection_day <= 3,
+#                              0.95, infection_times$sens)
+# infection_times$sens <- ifelse(infection_times$infection_day == 4,
+#                              0.90, infection_times$sens)
+# infection_times$sens <- ifelse(infection_times$infection_day == 5,
+#                              0.9, infection_times$sens)
+# infection_times$sens <- ifelse(infection_times$infection_day == 6,
+#                              0.85, infection_times$sens)
+# infection_times$sens <- ifelse(infection_times$infection_day == 7,
+#                              0.8, infection_times$sens)
+
 
 infection_times$spec <- 1
 
@@ -396,6 +395,10 @@ ggplot() +
        x = "Week",
        color = "")
 
+
+save <- estimates_200 %>% select(week, prev_list) %>% rename(prev = prev_list)
+save$week <- save$week-8
+write.csv(save, here("sim_200.csv"))
 
 ```
 
