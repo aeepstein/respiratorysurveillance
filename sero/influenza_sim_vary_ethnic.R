@@ -8,7 +8,7 @@ library(viridis)
 times <- seq(1,4.5*10*12,by=1) #45 year period
 simulation_settings <- list("t_start"=1,"t_end"=max(times))
 
-N<-100
+N<-10000
 aux <- list("ethnicity"=list("name" = "ethnicity",
                         "options" = c("hispanic", "other"),
                         "distribution" = c(0.5, 0.5)))
@@ -141,11 +141,9 @@ obs4$t <- sample_month_4
 obs5$t <- sample_month_5
 obs6$t <- sample_month_6
 
-observation_times <- bind_rows(obs1, obs2, obs3, obs4, obs5, obs6)
+#observation_times <- bind_rows(obs1, obs2, obs3, obs4, obs5, obs6)
+observation_times <- bind_rows(obs1)
 
-
-library(parallel)
-n_cores <- detectCores()
 
 ## Run the core simulation
 res<- runserosim(
@@ -155,7 +153,7 @@ res<- runserosim(
   foe_pars=foe_pars,
   biomarker_map=antigenic_map,
   model_pars=model_pars,
-  exposure_model=exposure_model_simple_FOE,
+  exposure_model=exposure_model,
   immunity_model=immunity_model_ifxn_biomarker_prot,
   antibody_model=antibody_model_monophasic_cross_reactivity,
   observation_model=observation_model_discrete_noise,
@@ -166,8 +164,8 @@ res<- runserosim(
   VERBOSE=NULL,
   attempt_precomputation = TRUE,
   parallel=TRUE,
-  n_cores=n_cores-2
+  n_cores=50
 )
 
+save.image('C:/Users/aeeps/Dropbox/Mac/Documents/UCSF research projects/Kaiser/simulation code/influenza/simulation_10k_ethnic.RData')
 
-save.image(here('/simulation_10k_ethnic.RData'))
