@@ -5,7 +5,7 @@ library(dust2)
 library(monty)
 
 # download data
-data <- read.csv("sim_200.csv")
+data <- read.csv("sim_200_noLTFU.csv")
 i <- 100
 one_run <- data[(36*i+1):(36*(i+1)),]
 # rename "week" column to "time"
@@ -34,9 +34,13 @@ sir <- odin({
   N <- 10000
 
   # comparison to data
-  prev <- data()
-  active_cases <- prev * N
-  active_cases ~ Poisson(I)
+  # prev <- data()
+  # active_cases <- prev * N
+  # active_cases ~ Poisson(I)
+  sample_size <- 200
+  sensitivity <- 0.9
+  detected_cases <- data()
+  detected_cases ~ Binomial(sample_size, sensitivity * I / N)
 }, quiet = TRUE)
 
 unfilter <- dust_unfilter_create(sir(), 0, one_run)
@@ -56,10 +60,10 @@ likelihood <- dust_likelihood_monty(unfilter, sir_packer)
 
 posterior <- prior + likelihood
 
-vcv <- diag(c(1e-8,7),2,2)
+vcv <- diag(c(1e-7,7),2,2)
 sampler <- monty_sampler_random_walk(vcv)
 
-n_samples = 1e6
+n_samples = 1e5
 samples <- monty_sample(posterior, sampler, n_samples, initial = sir_packer$pack(pars))
 plot(samples$density, type="l")
 acceptance_rate <- 1 - sum(apply(samples$pars,1,duplicated))/(n_samples*nrow(vcv))
@@ -75,7 +79,7 @@ for (par_n in 1:((n_samples%/%4))) {
   y <- dust_system_simulate(sys, time)
   attack_rates[par_n] <- dust_unpack_state(sys,y)$R[2]-dust_unpack_state(sys,y)$R[1]
 }
-print(quantile(attack_rates, c(0.025,0.5,0.975)))
+print(quantile(attack_rates, c(0.5,0.025,0.975)))
 # # save results
 # # write.csv(samples$pars, "samples_smaller.csv")
 # # calculate acceptance rate - i.e. 1 - the proportion of values in pars that are identical to the previous value

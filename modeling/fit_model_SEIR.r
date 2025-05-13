@@ -13,10 +13,13 @@ library(dust2)
 library(monty)
 library(parallel)
 
-args <- commandArgs(trailingOnly = TRUE)
-simulation_file <- args[1] # e.g. "sim_200"
-n_simulations <- as.numeric(args[2]) # e.g. 500
-MCMC_length <- as.numeric(args[3]) # recommended value 2e6
+# args <- commandArgs(trailingOnly = TRUE)
+# simulation_file <- args[1] # e.g. "sim_200"
+# n_simulations <- as.numeric(args[2]) # e.g. 500
+# MCMC_length <- as.numeric(args[3]) # recommended value 2e6
+simulation_file <- "sim_200_noLTFU"
+n_simulations <- 500
+MCMC_length <- 1e5
 
 # download data
 data <- read.csv(paste0(simulation_file,".csv"))
@@ -51,9 +54,13 @@ seir <- odin({
   N <- 10000
 
   # comparison to data
-  prev <- data()
-  active_cases <- prev * N
-  active_cases ~ Poisson(I)
+  # prev <- data()
+  # active_cases <- prev * N
+  # active_cases ~ Poisson(I)
+  sample_size <- 200
+  sensitivity <- 0.9
+  detected_cases <- data()
+  detected_cases ~ Binomial(sample_size, sensitivity * I / N)
 }, quiet = TRUE)
 
 prior <- monty_dsl({
@@ -68,12 +75,12 @@ prior <- monty_dsl({
 seir_packer <- monty_packer(c("beta", "gamma", "E0", "R0", "sigma", "phi"), fixed = list(alpha=1))
 
 # step sizes chosen to give acceptance rate of around 0.23
-vcv <- matrix(c(0.0008, 0, 0, 0, 0.0004, 0,
-                0, 0.0008, 0, 0, 0, 0,
+vcv <- matrix(c(0.01, 0, 0, 0, 0.01, 0,
+                0, 0.01, 0, 0, 0, 0,
                 0, 0, 0.1, 0, 0, 0,
-                0, 0, 0, 1, 0, 0,
-                0.0004, 0, 0, 0, 0.0004, 0,
-                0, 0, 0, 0, 0, 0.004), 6, 6)
+                0, 0, 0, 100, 0, 0,
+                0.01, 0, 0, 0, 0.01, 0,
+                0, 0, 0, 0, 0, 10), 6, 6)
 sampler <- monty_sampler_random_walk(vcv)
 
 ### run MCMCs in parallel for all simulations
@@ -86,8 +93,13 @@ run_model <- function(i, n_samples) {
   posterior <- prior + likelihood
   samples <- monty_sample(posterior, sampler, n_samples, initial = seir_packer$pack(pars))
   pars_samples <- samples$pars[,(n_samples%/%4):n_samples,1]
-  med <- apply(pars_samples, 1, median)
-  ci <- apply(pars_samples, 1, function(x) quantile(x, c(0.025, 0.975)))
+  acceptance_rate <- 1 - sum(apply(pars_samples,1,duplicated))/(n_samples*nrow(vcv))
+  print(acceptance_rate)
+  png(paste0("trace_",i,"_smaller.png"))
+  plot(samples$density, type="l")
+  dev.off()
+  # med <- apply(pars_samples, 1, median)
+  med_ci <- apply(pars_samples, 1, function(x) quantile(x, c(0.5, 0.025, 0.975)))
   attack_rates <- numeric((n_samples%/%4)*3)
   for (par_n in 1:((n_samples%/%4)*3)) {
     sys_pars <- list(beta = pars_samples[1,par_n], gamma = pars_samples[2,par_n], alpha=1, E0 = pars_samples[3,par_n], R0 = pars_samples[4,par_n], sigma=pars_samples[5,par_n], phi=pars_samples[6,par_n]) 
@@ -97,13 +109,13 @@ run_model <- function(i, n_samples) {
     y <- dust_system_simulate(sys, time)
     attack_rates[par_n] <- dust_unpack_state(sys,y)$R[2]-dust_unpack_state(sys,y)$R[1]
   }
-  attack_med <- median(attack_rates)
-  attack_ci <- quantile(attack_rates, c(0.025, 0.975))
+  # attack_med <- median(attack_rates)
+  attack_med_ci <- quantile(attack_rates, c(0.5, 0.025, 0.975))
   # write to median and CI to the same file
-  med_ci <- rbind(i,med, ci)
-  attack_med_ci <- t(c(i,attack_med, attack_ci))
-  write.table(med_ci, file = paste0("parameter_med_ci_",simulation_file,".csv"), append = TRUE, sep = ",", col.names = FALSE, row.names = FALSE)
-  write.table(attack_med_ci, file = paste0("attack_med_ci",simulation_file,".csv"), append = TRUE, sep = ",", col.names = FALSE, row.names = FALSE)
+  med_ci <- t(c(i,med_ci))
+  attack_med_ci <- t(c(i,attack_med_ci))
+  write.table(med_ci, file = paste0("parameter_med_ci_",simulation_file,"_smaller.csv"), append = TRUE, sep = ",", col.names = FALSE, row.names = FALSE)
+  write.table(attack_med_ci, file = paste0("attack_med_ci_",simulation_file,"_smaller.csv"), append = TRUE, sep = ",", col.names = FALSE, row.names = FALSE)
 }
 
 # set MCMC length
@@ -112,14 +124,14 @@ model_partial <- function(i) {
 }
 # write header to the file
 header <- t(c("n_simulation", "beta_med", "beta_lower", "beta_upper", "gamma_med", "gamma_lower", "gamma_upper", "E0_med", "E0_lower", "E0_upper", "R0_med", "R0_lower", "R0_upper", "sigma_med", "sigma_lower", "sigma_upper", "phi_med", "phi_lower", "phi_upper"))
-write.table(header, file = paste0("parameter_med_ci_",simulation_file,".csv"), sep = ",", col.names = FALSE, row.names = FALSE)
+write.table(header, file = paste0("parameter_med_ci_",simulation_file,"_smaller.csv"), sep = ",", col.names = FALSE, row.names = FALSE)
 header_attack <- t(c("n_simulation", "median", "lower", "upper"))
-write.table(header_attack, file = paste0("attack_med_ci",simulation_file,".csv"), sep = ",", col.names = FALSE, row.names = FALSE)
+write.table(header_attack, file = paste0("attack_med_ci_",simulation_file,"_smaller.csv"), sep = ",", col.names = FALSE, row.names = FALSE)
 # run the model
-mclapply(1:n_simulations, model_partial, mc.cores = detectCores())
+mclapply(1:n_simulations, model_partial, mc.cores = 4)
 
 # calculate median and ci of attack rate medians
-attack_med_ci <- read.csv(paste0("attack_med_ci",simulation_file,".csv"), header = TRUE)
+attack_med_ci <- read.csv(paste0("attack_med_ci_",simulation_file,"_smaller.csv"), header = TRUE)
 attack_med <- attack_med_ci$median
 print(attack_med)
 print(quantile(attack_med, c(0.025, 0.5, 0.975)))
